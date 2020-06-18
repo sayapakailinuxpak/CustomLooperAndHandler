@@ -20,6 +20,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     Handler handler;
     CustomLooperThread customLooperThread;
+    CustomHandlerThread customHandlerThread;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -33,11 +34,14 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
         Log.i(TAG, "onCreate: at Thread id : " + Thread.currentThread().getId());
 
-        customLooperThread = new CustomLooperThread();
-        customLooperThread.start();
+//        customLooperThread = new CustomLooperThread();
+//        customLooperThread.start();
 
         //initialize Handler with reference to Looper
 //        handler = new Handler(Looper.getMainLooper()); //should have reference to message queue of the UI Thread.
+
+        customHandlerThread = new CustomHandlerThread("CustomHandlerThread");
+        customHandlerThread.start();
     }
 
     @Override
@@ -46,7 +50,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             case R.id.button_start_thread:
                 isStopLoop = true;
 //                executeOnCustomLooper();
-                executeOnCustomLooperWithCustomHandler();
+//                executeOnCustomLooperWithCustomHandler();
+//                executeOnCustomHandlerThread();
+                executeOnCustomHandlerAndCommunicateToUI();
                 Toast.makeText(this, "Clicked", Toast.LENGTH_SHORT).show();
                 break;
             case R.id.button_stop_thread:
@@ -97,6 +103,50 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                             }
                         });
                     } catch (InterruptedException e){
+                        e.printStackTrace();
+                    }
+                }
+            }
+        });
+    }
+
+    private void executeOnCustomHandlerThread(){
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    while (isStopLoop){
+                        Log.i(TAG, "Thread that sends the message at Thread id : " + Thread.currentThread().getId());
+                        Thread.sleep(1000);
+                        count++;
+                        Message message = new Message();
+                        message.obj = "" + count;
+                        customHandlerThread.handler.sendMessage(message); //send message to handler that had been initialized in our own CustomLooper class
+                    }
+                }catch (InterruptedException e){
+                    e.printStackTrace();
+                }
+            }
+        }).start();
+    }
+
+    private void executeOnCustomHandlerAndCommunicateToUI(){
+        customHandlerThread.handler.post(new Runnable() {
+            @Override
+            public void run() {
+                while (isStopLoop){
+                    try {
+                        Thread.sleep(1000);
+                        count++;
+
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                Log.i(TAG, "Thread id of runOnUiThread : " + Thread.currentThread().getId());
+                                textViewNumber.setText("" + count);
+                            }
+                        });
+                    }catch (InterruptedException e){
                         e.printStackTrace();
                     }
                 }
